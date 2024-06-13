@@ -103,3 +103,4 @@ chmod +x get-wildcard-cert.sh  # This updates the execution permissions and only
 ## Configure Auto-Renewal
 
 Follow the steps here to configure auto-renewal: https://youtu.be/7jEzioFsyNo?list=RDCMUCeLvlbC754U6FyFQbKc0UnQ&t=1064
+
