@@ -38,15 +38,15 @@ fi
 echo ""
 echo "* Script Version: $SCRIPT_VERSION *"
 echo ""
-echo "* This script will create or renew a wildcard certificate that for a certain domain."
+echo "* This script will create or renew a wildcard certificate for a certain domain."
 echo "* The script requires a valid domain name. If you do not have one, exit now and rerun this script when "
 echo "  one is secured. Then rerun this script. "
 echo ""
 echo "* You will also need to create an A record and an NS record in the DNS for this hostname before running the script."
-echo "  The A record should be in the form: \$HOSTNAME IN A \$IP_ADDRESS"
-echo "  The NS record should be in the form: \$HOSTNAME IN NS \$HOSTNAME"
+echo "  The A record should be in the form: \$DOMAIN IN A \$IP_ADDRESS"
+echo "  The NS record should be in the form: \$DOMAIN IN NS \$HOSTNAME"
 echo ""
-echo "* When the certificate is being generate, you will need to add a CNAME record to the DNS that is provided. Please"
+echo "* When the certificate is being generated, you will need to add a CNAME record to the DNS that is provided. Please"
 echo "  be prepared to do this."
 echo ""
 
@@ -73,7 +73,7 @@ while read -erp "Renewal [y/n]: " text; do
 
       # Get the domain
       echo ""
-      echo "Enter the wildcard domain to be used (ex: example.io): "
+      echo "Enter the domain to be used (ex: example.com): "
       read -r DOMAIN
       echo ""
 
@@ -81,21 +81,40 @@ while read -erp "Renewal [y/n]: " text; do
       certbot renew --manual --preferred-challenges dns --manual-auth-hook 'acme-dns-client'
       test_command "Renewing Certificate" $?
 
+      # Check for existing certificate
+      if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+        echo ""
+        log "Finding Certificate" "[SUCCESS]"
+      else
+        echo ""
+        log "Finding Certificate" "[FAILED]"
+        log "Error; Unable to find the certificate. Make sure the certificate was generated on this server."
+        exit 1
+      fi
+
+      # Set certificate export variables
+      CERT_FILENAME=${DOMAIN//./-}
+      CERT_DIR="$CWD/generated-certificates/$CERT_FILENAME"
+
       # Create certificate directory
-      if [ -d "$CWD/generated-wildcard-certificates" ]; then
+      if [ -d "$CWD/generated-certificates" ]; then
         :
       else
         mkdir "$CWD/generated-certificates"
       fi
+      # Create domain directory in certificate folder
+      if [ -d "$CWD/generated-certificates/$CERT_FILENAME" ]; then
+        :
+      else
+        mkdir "$CWD/generated-certificates/$CERT_FILENAME"
+      fi
 
       # Extract certificate and RSA/EC private key
-      CERT_FILENAME=${DOMAIN//./-}
-      CERT_DIR="$CWD/generated-certificates"
       openssl x509 -in "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" -out "$CERT_DIR/$CERT_FILENAME-wildcard-certificate.pem" -nokeys
       test_command "Saving certificate to ${CWD}/${CERT_FILENAME}-wildcard-certificate.pem" $?
 
-      openssl rsa -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-rsa-private-key.pem"
-      test_command "Saving RSA private key to ${CWD}/${CERT_FILENAME}-rsa-private-key.pem" $?
+      # openssl rsa -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-rsa-private-key.pem"
+      # test_command "Saving RSA private key to ${CWD}/${CERT_FILENAME}-rsa-private-key.pem" $?
 
       openssl ec -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-ec-private-key.pem"
       test_command "Saving EC private key to ${CWD}/${CERT_FILENAME}-ec-private-key.pem" $?
@@ -113,7 +132,7 @@ while read -erp "Renewal [y/n]: " text; do
 
 # Get the domain
 echo ""
-echo "Enter the wildcard domain to be used (ex: example.io): "
+echo "Enter the domain to be used (ex: example.com): "
 read -r DOMAIN
 echo ""
 
@@ -144,6 +163,7 @@ if [ -d /opt/acme-dns ]; then
 else
   mkdir /opt/acme-dns
 fi
+# shellcheck disable=SC2164
 cd /opt/acme-dns
 
 # Download and extract tar with acme-dns from GitHub
@@ -252,6 +272,7 @@ if [ -d /opt/acme-dns-client ]; then
 else
   mkdir /opt/acme-dns-client
 fi
+# shellcheck disable=SC2164
 cd /opt/acme-dns-client
 
 # Download and extract acme-dns-client
@@ -290,6 +311,10 @@ else
 fi
 
 # Create a new acme-dns account for the domain
+echo ""
+echo "Creating DNS account for ${DOMAIN}:"
+echo ""
+
 acme-dns-client register -d "$DOMAIN" -s "http://127.0.0.1:$ACME_PORT"
 test_command "Creating DNS account for ${DOMAIN}" $?
 
@@ -301,28 +326,41 @@ echo "---------- END CHECK -----------"
 echo ""
 
 # Get wildcard certificate
+echo ""
+echo "Generating wildcard certificate for *.${DOMAIN}"
+echo ""
+
 certbot certonly \
   --manual \
   --preferred-challenges dns \
   --manual-auth-hook 'acme-dns-client' \
   -d "*.$DOMAIN"
-test_command "Generating wildcard certificate for *.$DOMAIN" $?
+test_command "Generating wildcard certificate for *.${DOMAIN}" $?
+
+# Set certificate export variables
+CERT_FILENAME=${DOMAIN//./-}
+CERT_DIR="$CWD/generated-certificates/$CERT_FILENAME"
 
 # Create certificate directory
-if [ -d "$CWD/generated-wildcard-certificates" ]; then
+if [ -d "$CWD/generated-certificates" ]; then
   :
 else
   mkdir "$CWD/generated-certificates"
 fi
 
+# Create domain directory in certificate folder
+if [ -d "$CWD/generated-certificates/$CERT_FILENAME" ]; then
+  :
+else
+  mkdir "$CWD/generated-certificates/$CERT_FILENAME"
+fi
+
 # Extract certificate and RSA/EC private key
-CERT_FILENAME=${DOMAIN//./-}
-CERT_DIR="$CWD/generated-certificates"
 openssl x509 -in "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" -out "$CERT_DIR/$CERT_FILENAME-wildcard-certificate.pem" -nokeys
 test_command "Saving certificate to ${CWD}/${CERT_FILENAME}-wildcard-certificate.pem" $?
 
-openssl rsa -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-rsa-private-key.pem"
-test_command "Saving RSA private key to ${CWD}/${CERT_FILENAME}-rsa-private-key.pem" $?
+# openssl rsa -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-rsa-private-key.pem"
+# test_command "Saving RSA private key to ${CWD}/${CERT_FILENAME}-rsa-private-key.pem" $?
 
 openssl ec -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-ec-private-key.pem"
 test_command "Saving EC private key to ${CWD}/${CERT_FILENAME}-ec-private-key.pem" $?
