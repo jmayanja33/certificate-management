@@ -2,7 +2,7 @@
 
 **<u>Latest Stable Version:</u>** v1.0
 
-The script `get-wildcard-script.sh` generates or renews a wildcard certificate from Let's Encrypt on a Linux server, and is based off of this: https://github.com/antonputra/tutorials/tree/main/lessons/081. The script does not auto-renew the certificate by default, but this can be configured after the script has been run. Let's Encrypt certificates are only valid for 90 days, and it is recommended they are renewed every 60 days.
+The script `get-wildcard-cert.sh` generates or renews a wildcard certificate from Let's Encrypt on a Linux server, and is based off of this: https://github.com/antonputra/tutorials/tree/main/lessons/081. The script does not auto-renew the certificate by default, but this can be configured after the script has been run. Let's Encrypt certificates are only valid for 90 days, and it is recommended they are renewed every 60 days.
 
 The latest stable version of this script can be found in the master branch, or the branch corresponding to the version listed above.
 
