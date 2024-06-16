@@ -99,6 +99,10 @@ chmod +x get-wildcard-cert.sh  # This updates the execution permissions and only
   * The private key can be found in and `/etc/letsencrypt/live/$YOUR_DOMAIN/fullchain.pem`
   * Both the certificate (not the full chain) and private key will be extracted into a new directory, `generated-certificates`, which lives in the same directory that the script is being run in. These files can be downloaded and used on other servers.
 
+If an error is encounter while renewing a certificate, run the following command to reset the acme-dns server and generate a new certificate.
+```shell
+sudo rm -r /etc/letsencrypt/accounts/acme-staging-v02.api.letsencrypt.org/
+```
 
 ## Configure Auto-Renewal
 
