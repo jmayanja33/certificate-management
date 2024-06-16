@@ -361,3 +361,4 @@ extract_certificate "${CWD}" "${DOMAIN}"
 echo ""
 
 log "Script completed with exit code 0"
+
