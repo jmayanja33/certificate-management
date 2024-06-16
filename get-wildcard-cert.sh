@@ -10,10 +10,6 @@ function log() {
   fi
 }
 
-function abort() {
-  exit 1
-}
-
 function test_command() {
   local message="${1}"
   local return_val=${2}
@@ -26,6 +22,39 @@ function test_command() {
   fi
 
   log "${message}" "[SUCCESS]"
+}
+
+# Function to extract and save certificate/private key
+function extract_certificate() {
+
+  local cwd="${1}"
+  local domain="${2}"
+  local cert_filename=${domain//./-}
+  local cert_dir="$cwd/generated-certificates/$cert_filename"
+
+  # Create certificate directory
+  if [ -d "$cwd/generated-certificates" ]; then
+    :
+  else
+    mkdir "$cwd/generated-certificates"
+  fi
+
+  # Create domain directory in certificate folder
+  if [ -d "$cwd/generated-certificates/$cert_filename" ]; then
+    :
+  else
+    mkdir "$cwd/generated-certificates/$cert_filename"
+  fi
+
+  # Extract certificate and RSA/EC private key
+  openssl x509 -in "/etc/letsencrypt/live/$domain/fullchain.pem" -out "$cert_dir/$cert_filename-wildcard-certificate.pem" -nokeys
+  test_command "Saving certificate to ${cwd}/${cert_filename}-wildcard-certificate.pem" $?
+
+  # openssl rsa -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-rsa-private-key.pem"
+  # test_command "Saving RSA private key to ${CWD}/${CERT_FILENAME}-rsa-private-key.pem" $?
+
+  openssl ec -in "/etc/letsencrypt/live/$domain/privkey.pem" -out "$cert_dir/$cert_filename-ec-private-key.pem"
+  test_command "Saving EC private key to ${cwd}/${cert_filename}-ec-private-key.pem" $?
 }
 
 # Make sure script is run as root
@@ -92,32 +121,8 @@ while read -erp "Renewal [y/n]: " text; do
         exit 1
       fi
 
-      # Set certificate export variables
-      CERT_FILENAME=${DOMAIN//./-}
-      CERT_DIR="$CWD/generated-certificates/$CERT_FILENAME"
-
-      # Create certificate directory
-      if [ -d "$CWD/generated-certificates" ]; then
-        :
-      else
-        mkdir "$CWD/generated-certificates"
-      fi
-      # Create domain directory in certificate folder
-      if [ -d "$CWD/generated-certificates/$CERT_FILENAME" ]; then
-        :
-      else
-        mkdir "$CWD/generated-certificates/$CERT_FILENAME"
-      fi
-
-      # Extract certificate and RSA/EC private key
-      openssl x509 -in "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" -out "$CERT_DIR/$CERT_FILENAME-wildcard-certificate.pem" -nokeys
-      test_command "Saving certificate to ${CWD}/${CERT_FILENAME}-wildcard-certificate.pem" $?
-
-      # openssl rsa -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-rsa-private-key.pem"
-      # test_command "Saving RSA private key to ${CWD}/${CERT_FILENAME}-rsa-private-key.pem" $?
-
-      openssl ec -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-ec-private-key.pem"
-      test_command "Saving EC private key to ${CWD}/${CERT_FILENAME}-ec-private-key.pem" $?
+      # Extract certificate
+      extract_certificate "${CWD}" "${DOMAIN}"
 
       echo ""
       log "Script completed with exit code 0"
@@ -337,33 +342,8 @@ certbot certonly \
   -d "*.$DOMAIN"
 test_command "Generating wildcard certificate for *.${DOMAIN}" $?
 
-# Set certificate export variables
-CERT_FILENAME=${DOMAIN//./-}
-CERT_DIR="$CWD/generated-certificates/$CERT_FILENAME"
-
-# Create certificate directory
-if [ -d "$CWD/generated-certificates" ]; then
-  :
-else
-  mkdir "$CWD/generated-certificates"
-fi
-
-# Create domain directory in certificate folder
-if [ -d "$CWD/generated-certificates/$CERT_FILENAME" ]; then
-  :
-else
-  mkdir "$CWD/generated-certificates/$CERT_FILENAME"
-fi
-
-# Extract certificate and RSA/EC private key
-openssl x509 -in "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" -out "$CERT_DIR/$CERT_FILENAME-wildcard-certificate.pem" -nokeys
-test_command "Saving certificate to ${CWD}/${CERT_FILENAME}-wildcard-certificate.pem" $?
-
-# openssl rsa -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-rsa-private-key.pem"
-# test_command "Saving RSA private key to ${CWD}/${CERT_FILENAME}-rsa-private-key.pem" $?
-
-openssl ec -in "/etc/letsencrypt/live/$DOMAIN/privkey.pem" -out "$CERT_DIR/$CERT_FILENAME-ec-private-key.pem"
-test_command "Saving EC private key to ${CWD}/${CERT_FILENAME}-ec-private-key.pem" $?
+# Extract certificate
+extract_certificate "${CWD}" "${DOMAIN}"
 
 ## Test automatic renewal
 #echo ""
